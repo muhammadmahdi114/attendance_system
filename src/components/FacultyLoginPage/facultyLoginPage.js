@@ -1,41 +1,41 @@
 import React, { useState, } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
-export default function RegisterPage() {
 
-    const [name, setName] = useState("");
+export default function FacultyLoginPage() {
+
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [age, setAge] = useState("");
     const [passwordType, setPasswordType] = useState("password")
+    const [role] = useState("admin")
     const navigate = useNavigate();
 
     async function submit(e) {
         e.preventDefault();
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          alert("Please enter a valid email address");
-          return;
-        }
-    
         try {
-          const response = await axios.post("http://localhost:8000/signup", {
-            name,
-            email,
-            password,
-            age,
-          });
-    
-          if (response.data.status === "exist") {
-            alert("User already exists");
-          } else {
-            navigate("/");
-          }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert("Please enter a valid email address");
+                return;
+            }
+
+            const response = await axios.post("http://localhost:8000/login", {
+                email,
+                password,
+                role
+            });
+
+            if (response.data.success) {
+                const nameFromResponse = response.data.username;
+                sessionStorage.setItem("name", nameFromResponse);
+                navigate("/dashboard");
+            } else {
+                alert(response.data.message);
+            }
         } catch (error) {
-          alert("Error occurred while signing up");
-          console.log(error);
+            alert("Error occurred while logging in");
+            console.log(error);
         }
     }
 
@@ -45,26 +45,28 @@ export default function RegisterPage() {
         } else {
             setPasswordType("password")
         }
-    }
+    }   
     return (
-        <div className="w-full h-screen flex flex-col items-center bg-gradient-to-r from-blue-500 to-navy-200">
-            <div className="w-1/3 my-10 bg-white border-4 border-white rounded-lg p-9 flex flex-col justify-center items-center text-black">
-                <h1 className="text-3xl mt-3">SignUp</h1>
+        <div className="w-screen h-screen flex flex-col items-center bg-gradient-to-r from-blue-500 to-navy-200">
+            <div className="absolute top-4 right-4 flex items-center">
+                <button
+                    onClick={() => navigate("/")}
+                    className="bg-blue-500 text-white p-2 rounded-lg shadow transition-transform duration-300 ease-in-out transform hover:scale-105"
+                >
+                    Switch to Student Login
+                </button>
+            </div>
+            <div className="w-1/3 my-32 bg-white border-4 border-white rounded-lg p-9 flex flex-col justify-center items-center text-black">
+                <h1 className="text-3xl mt-3">Admin Login</h1>
                 <form onSubmit={submit}>
-                <div className="w-80 mt-10">
-                        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} className="h-8 border-b-2 border-gray-200 pl-5 w-full" />
-                    </div>
                     <div className="w-80 mt-10">
                         <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-8 border-b-2 border-gray-200 pl-5 w-full" />
-                    </div>
-                    <div className="w-80 mt-10">
-                        <input type="text" placeholder="Age" value={age} onChange={(e) => setAge(e.target.value)} className="h-8 border-b-2 border-gray-200 pl-5 w-full" />
                     </div>
                     <div className="w-80 mt-10">
                         <input type={passwordType} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-8 border-b-2 border-gray-200 pl-5 w-full" />
                     </div>
                     <div className="mt-10">
-                        <input type="checkbox" onChange={handleTogglePass}/>
+                        <input type="checkbox" onChange={handleTogglePass} />
                         <label className="ml-2">Show password</label>
                     </div>
                     <div className="w-80 mt-10">
@@ -76,7 +78,6 @@ export default function RegisterPage() {
                         </button>
                     </div>
                 </form>
-                <Link to="/" className="mt-3">Already have an account? <span className="underline text-blue-600">Login!</span></Link>
             </div>
         </div>
     )
