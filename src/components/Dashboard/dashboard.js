@@ -9,9 +9,12 @@ export default function Dashboard() {
     const [attendanceRecords, setAttendanceRecords] = useState([]);
     const [leaveRequests, setLeaveRequests] = useState([]);
     const [leaveReason, setLeaveReason] = useState("");
+    const [hasLeaveRequestToday, setHasLeaveRequestToday] = useState(false);
+    const [showPopup, setShowPopup] = useState(false);
 
     const navigate = useNavigate();
     const email = sessionStorage.getItem('email');
+    const name = sessionStorage.getItem('name');
 
     useEffect(() => {
         setProfilePic(sessionStorage.getItem('profilePic'));
@@ -23,6 +26,7 @@ export default function Dashboard() {
         try {
             const response = await axios.get(`http://localhost:8000/attendance-records?email=${email}`);
             setAttendanceRecords(response.data.attendanceRecords);
+            checkAttendanceMarked(response.data.attendanceRecords);
         } catch (error) {
             console.error("Error fetching attendance records", error);
         }
@@ -32,9 +36,25 @@ export default function Dashboard() {
         try {
             const response = await axios.get(`http://localhost:8000/leave-requests?email=${email}`);
             setLeaveRequests(response.data.leaveRequests);
+            checkLeaveRequestToday(response.data.leaveRequests);
         } catch (error) {
             console.error("Error fetching leave requests", error);
         }
+    };
+
+    const checkAttendanceMarked = (records) => {
+        const today = new Date().toISOString().split('T')[0];
+        const marked = records.some(record => record.date === today);
+        setAttendanceMarked(marked);
+    };
+
+    const checkLeaveRequestToday = (requests) => {
+        const today = new Date().toISOString().split('T')[0];
+        const hasRequestToday = requests.some(request => {
+            const requestDate = new Date(request.date).toISOString().split('T')[0];
+            return requestDate === today;
+        });
+        setHasLeaveRequestToday(hasRequestToday);
     };
 
     const handleLogout = () => {
@@ -70,6 +90,11 @@ export default function Dashboard() {
     };
 
     const handleSubmitLeaveRequest = async () => {
+        if (hasLeaveRequestToday) {
+            alert('Leave request for today already submitted.');
+            return;
+        }
+
         try {
             const response = await axios.post('http://localhost:8000/submit-leave-request', { email, reason: leaveReason });
             if (response.data.success) {
@@ -82,6 +107,21 @@ export default function Dashboard() {
         } catch (error) {
             console.error("Error submitting leave request", error);
         }
+    };
+
+    const viewAttendance = async (email) => {
+        try {
+            const response = await axios.get(`http://localhost:8000/attendance-records?email=${email}`);
+            setAttendanceRecords(response.data.attendanceRecords);
+            setShowPopup(true);
+        } catch (error) {
+            console.error('Error fetching attendance records', error);
+        }
+    };
+
+    const closePopup = () => {
+        setShowPopup(false);
+        setAttendanceRecords([]);
     };
 
     return (
@@ -99,6 +139,9 @@ export default function Dashboard() {
                     <div className='w-28 flex flex-col items-center justify-center rounded-lg bg-gray-600 text-white'>
                         <ul>
                             <li>
+                                <span className='my-1'>{name}</span>
+                            </li>
+                            <li>
                                 <button className="hover:text-gray-400 my-1" onClick={handleEditProfile}>Edit Profile</button>
                             </li>
                             <li>
@@ -113,13 +156,19 @@ export default function Dashboard() {
             </div>
             <div className="w-1/3 my-10 bg-white border-4 border-white rounded-lg p-9 flex flex-col justify-center items-center text-black">
                 <h1 className="text-3xl mt-3">Dashboard</h1>
-                <button
-                    className="p-2 rounded text-center border-white mt-4 bg-blue-500 text-white h-12 w-full hover:bg-blue-700 hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 focus:outline-none focus:shadow-outline"
-                    onClick={handleMarkAttendance}
-                    disabled={attendanceMarked}
-                >
-                    Mark Attendance
-                </button>
+                {attendanceMarked ? (
+                    <span className="p-2 rounded text-center border-white mt-4 bg-green-500 text-white h-12 w-full">Attendance Marked</span>
+                ) : hasLeaveRequestToday ? (
+                    <span className="p-2 rounded text-center border-white mt-4 bg-yellow-500 text-white h-12 w-full">Leave Requested</span>
+                ) :
+                    (
+                        <button
+                            className="p-2 rounded text-center border-white mt-4 bg-blue-500 text-white h-12 w-full hover:bg-blue-700 hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 focus:outline-none focus:shadow-outline"
+                            onClick={handleMarkAttendance}
+                        >
+                            Mark Attendance
+                        </button>
+                    )}
                 <div className="w-80 mt-10">
                     <input
                         type="text"
@@ -131,16 +180,11 @@ export default function Dashboard() {
                     <button
                         className="p-2 rounded text-center border-white mt-4 bg-blue-500 text-white h-12 w-full hover:bg-blue-700 hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 focus:outline-none focus:shadow-outline"
                         onClick={handleSubmitLeaveRequest}
+                        disabled={hasLeaveRequestToday}
                     >
                         Submit Leave Request
                     </button>
                 </div>
-                <h2 className="text-2xl mt-10">Attendance Records</h2>
-                <ul>
-                    {attendanceRecords.map(record => (
-                        <li key={record._id}>{record.date}: {record.status}</li>
-                    ))}
-                </ul>
                 <h2 className="text-2xl mt-10">Leave Requests</h2>
                 <ul>
                     {leaveRequests.map(request => (
@@ -151,8 +195,33 @@ export default function Dashboard() {
                             {request.date}: {request.reason}
                         </li>
                     ))}
-
                 </ul>
+                <button
+                    onClick={() => viewAttendance(email)}
+                    className="bg-blue-500 text-white px-4 py-2 mt-5 rounded hover:bg-blue-700 transition"
+                >
+                    View Attendance
+                </button>
+                {showPopup && (
+                    <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+                        <div className="bg-white rounded-lg p-6 w-1/2">
+                            <h2 className="text-2xl font-semibold mb-4">Attendance Records for {name}</h2>
+                            <ul>
+                                {attendanceRecords.map(record => (
+                                    <li key={record._id} className="mb-2">
+                                        Date: {record.date}, Status: {record.status}
+                                    </li>
+                                ))}
+                            </ul>
+                            <button
+                                onClick={closePopup}
+                                className="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
