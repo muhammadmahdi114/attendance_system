@@ -28,8 +28,14 @@ export default function FacultyLoginPage() {
 
             if (response.data.success) {
                 const nameFromResponse = response.data.username;
+                const emailFromResponse = response.data.email;
+                const ageFromResponse = response.data.age;
+                const picFromResponse = response.data.profilePic;
                 sessionStorage.setItem("name", nameFromResponse);
-                navigate("/dashboard");
+                sessionStorage.setItem("email", emailFromResponse);
+                sessionStorage.setItem("profilePic", picFromResponse);
+                sessionStorage.setItem("age", ageFromResponse);
+                navigate("/adminDashboard");
             } else {
                 alert(response.data.message);
             }
